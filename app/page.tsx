@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -70,6 +70,14 @@ interface UserProfile {
 
 type AuthMode = "login" | "forgot";
 type SidebarMenu = "home" | "add-lead" | "leads" | "webinars" | "register" | "edit-lead";
+
+const STATUS_CONFIG: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+  New: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", dot: "bg-blue-500" },
+  Contacted: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", dot: "bg-amber-500" },
+  Qualified: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500" },
+  Sales: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", dot: "bg-violet-500" },
+  Lost: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", dot: "bg-red-500" },
+};
 
 export default function DashboardPortal() {
   // Session state
@@ -2394,106 +2402,165 @@ export default function DashboardPortal() {
                       <span className="text-sm font-bold">Querying live CRM records...</span>
                     </div>
                   ) : filteredLeads.length > 0 ? (
-                    <table className="w-full text-left border-collapse min-w-[1400px]">
+                    <table className="w-full text-left border-collapse min-w-[1200px]">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          <th className="py-3 px-3 w-[42px] text-center">#</th>
-                          <th className="py-3 px-4 w-[140px]">Guardian</th>
-                          <th className="py-3 px-4 w-[120px]">Student</th>
-                          <th className="py-3 px-3 w-[50px]">Age</th>
-                          <th className="py-3 px-3 w-[80px]">Class</th>
-                          <th className="py-3 px-4 w-[140px]">Phone</th>
-                          <th className="py-3 px-4 w-[110px]">Area</th>
-                          <th className="py-3 px-3 w-[90px]">Status</th>
-                          <th className="py-3 px-4 w-[130px]">Webinar</th>
-                          <th className="py-3 px-4 w-[180px]">1st Call</th>
-                          <th className="py-3 px-4 w-[180px]">2nd Call</th>
-                          <th className="py-3 px-4 w-[180px]">3rd Call</th>
-                          <th className="py-3 px-3 w-[90px] text-right">Actions</th>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider select-none">
+                          <th className="py-3.5 px-4 w-[48px] text-center">#</th>
+                          <th className="py-3.5 px-4 w-[240px]">Student / Guardian</th>
+                          <th className="py-3.5 px-4 w-[160px]">Contact Info</th>
+                          <th className="py-3.5 px-4 w-[120px]">Location</th>
+                          <th className="py-3.5 px-4 w-[110px] text-center">Status</th>
+                          <th className="py-3.5 px-4 w-[160px]">Webinar Assigned</th>
+                          <th className="py-3.5 px-4 w-[360px]">Call History & Notes</th>
+                          <th className="py-3.5 px-4 w-[110px] text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredLeads.map((lead, rowIdx) => {
-                          const sc = lead.status === "Qualified" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : lead.status === "Sales" ? "bg-violet-50 text-violet-700 border-violet-200"
-                            : lead.status === "Contacted" ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : lead.status === "Lost" ? "bg-red-50 text-red-600 border-red-200"
-                            : "bg-blue-50 text-blue-700 border-blue-200";
+                          const sc = STATUS_CONFIG[lead.status] || STATUS_CONFIG.New;
                           return (
-                          <tr key={lead._id} className="hover:bg-blue-50/30 transition-colors text-xs">
-                            {/* # */}
-                            <td className="py-2.5 px-3 text-center text-[10px] font-bold text-slate-300">{rowIdx + 1}</td>
-                            {/* Guardian */}
-                            <td className="py-2.5 px-4">
-                              <span className="font-bold text-slate-800 block truncate max-w-[130px]" title={lead.guardianName}>
-                                {lead.guardianName === "N/A" ? <span className="text-slate-300 italic font-normal">—</span> : lead.guardianName}
-                              </span>
-                            </td>
-                            {/* Student */}
-                            <td className="py-2.5 px-4">
-                              <span className="font-semibold text-slate-700 block truncate max-w-[110px]" title={lead.studentName}>
-                                {lead.studentName === "N/A" ? <span className="text-slate-300 italic font-normal">—</span> : lead.studentName}
-                              </span>
-                            </td>
-                            {/* Age */}
-                            <td className="py-2.5 px-3 text-slate-600 font-semibold">{lead.studentAge || <span className="text-slate-300">—</span>}</td>
-                            {/* Class */}
-                            <td className="py-2.5 px-3 text-slate-600 font-semibold truncate max-w-[75px]" title={lead.studentClass}>{lead.studentClass || <span className="text-slate-300">—</span>}</td>
-                            {/* Phone */}
-                            <td className="py-2.5 px-4">
-                              <span className="font-bold text-slate-800">{lead.phone}</span>
-                              {lead.email && <span className="block text-[10px] text-slate-400 truncate max-w-[130px]" title={lead.email}>{lead.email}</span>}
-                            </td>
-                            {/* Area */}
-                            <td className="py-2.5 px-4 text-slate-600 font-semibold truncate max-w-[105px]" title={lead.address}>
-                              {lead.address === "N/A" ? <span className="text-slate-300">—</span> : lead.address}
-                            </td>
-                            {/* Status */}
-                            <td className="py-2.5 px-3">
-                              <span className={`inline-block px-2 py-0.5 rounded-[5px] text-[10px] font-bold border ${sc}`}>{lead.status}</span>
-                            </td>
-                            {/* Webinar */}
-                            <td className="py-2.5 px-4">
-                              {lead.webinar
-                                ? <span className="text-[10px] font-bold text-[#3b82f6] bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-[4px] block truncate max-w-[125px]" title={lead.webinar}>{lead.webinar}</span>
-                                : <span className="text-slate-300">—</span>}
-                            </td>
-                            {/* 1st Call */}
-                            <td className="py-2.5 px-4 max-w-[175px]">
-                              {lead.firstCall
-                                ? <span className="text-slate-600 line-clamp-2 leading-relaxed" title={lead.firstCall}>{lead.firstCall}</span>
-                                : <span className="text-slate-300 italic">No entry</span>}
-                            </td>
-                            {/* 2nd Call */}
-                            <td className="py-2.5 px-4 max-w-[175px]">
-                              {lead.secondCall
-                                ? <span className="text-slate-600 line-clamp-2 leading-relaxed" title={lead.secondCall}>{lead.secondCall}</span>
-                                : <span className="text-slate-300 italic">No entry</span>}
-                            </td>
-                            {/* 3rd Call */}
-                            <td className="py-2.5 px-4 max-w-[175px]">
-                              {lead.thirdCall
-                                ? <span className="text-slate-600 line-clamp-2 leading-relaxed" title={lead.thirdCall}>{lead.thirdCall}</span>
-                                : <span className="text-slate-300 italic">No entry</span>}
-                            </td>
-                            {/* Actions */}
-                            <td className="py-2.5 px-3">
-                              <div className="flex items-center justify-end gap-1">
-                                <button onClick={() => setViewingLead(lead)} title="View Full Profile"
-                                  className="p-1.5 text-slate-400 hover:text-[#3b82f6] hover:bg-blue-50 rounded-[6px] transition-colors cursor-pointer">
-                                  <FiExternalLink className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={() => handleEditLead(lead)} title="Edit Record"
-                                  className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-[6px] transition-colors cursor-pointer">
-                                  <FiEdit3 className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={() => handleDeleteLead(lead._id, lead.guardianName)} title="Delete"
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-[6px] transition-colors cursor-pointer">
-                                  <FiTrash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                            <tr key={lead._id} className="hover:bg-blue-50/20 transition-colors text-xs animate-fadeIn">
+                              {/* # */}
+                              <td className="py-3.5 px-4 text-center text-[10px] font-bold text-slate-300">
+                                {rowIdx + 1}
+                              </td>
+
+                              {/* Student / Guardian */}
+                              <td className="py-3.5 px-4">
+                                <div className="font-bold text-slate-800 truncate" title={lead.studentName}>
+                                  {lead.studentName === "N/A" || !lead.studentName ? (
+                                    <span className="text-slate-300 italic font-normal">—</span>
+                                  ) : (
+                                    lead.studentName
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] font-semibold text-slate-500">
+                                  {lead.studentAge && (
+                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded-[4px]">
+                                      {lead.studentAge} yrs
+                                    </span>
+                                  )}
+                                  {lead.studentClass && (
+                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded-[4px]">
+                                      Class {lead.studentClass}
+                                    </span>
+                                  )}
+                                  {lead.guardianName && lead.guardianName !== "N/A" && (
+                                    <span className="text-slate-400 font-medium truncate max-w-[120px]" title={`Guardian: ${lead.guardianName}`}>
+                                      • Guardian: {lead.guardianName}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Contact Info */}
+                              <td className="py-3.5 px-4">
+                                <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
+                                  {lead.phone}
+                                </div>
+                                {lead.email ? (
+                                  <div className="text-[11px] text-slate-400 font-medium mt-0.5 truncate max-w-[140px]" title={lead.email}>
+                                    {lead.email}
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] text-slate-300 italic mt-0.5">No email</div>
+                                )}
+                              </td>
+
+                              {/* Location */}
+                              <td className="py-3.5 px-4">
+                                {lead.address === "N/A" || !lead.address ? (
+                                  <span className="text-slate-300 italic text-[11px]">—</span>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-slate-600 font-semibold text-xs">
+                                    <FiMapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span className="truncate max-w-[110px]" title={lead.address}>
+                                      {lead.address}
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Status */}
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${sc.bg} ${sc.border} ${sc.text}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                                  {lead.status}
+                                </span>
+                              </td>
+
+                              {/* Webinar Assigned */}
+                              <td className="py-3.5 px-4">
+                                {lead.webinar ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <FiVideo className="w-3.5 h-3.5 text-[#3b82f6] shrink-0" />
+                                    <span className="text-[11px] font-semibold text-slate-700 truncate max-w-[140px]" title={lead.webinar}>
+                                      {lead.webinar}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-300 italic text-[11px]">Not assigned</span>
+                                )}
+                              </td>
+
+                              {/* Call History & Notes */}
+                              <td className="py-3.5 px-4">
+                                <div className="flex flex-col gap-1.5 max-w-[340px]">
+                                  {lead.firstCall ? (
+                                    <div className="flex items-start gap-1.5 text-[11px] bg-slate-50 border border-slate-200/60 rounded-[6px] px-2 py-1" title={`1st Call: ${lead.firstCall}`}>
+                                      <span className="font-extrabold text-[#3b82f6] bg-[#3b82f6]/10 px-1 rounded-[3px] text-[9px] uppercase shrink-0 mt-0.5 select-none">Call 1</span>
+                                      <span className="text-slate-600 truncate">{lead.firstCall}</span>
+                                    </div>
+                                  ) : null}
+                                  {lead.secondCall ? (
+                                    <div className="flex items-start gap-1.5 text-[11px] bg-slate-50 border border-slate-200/60 rounded-[6px] px-2 py-1" title={`2nd Call: ${lead.secondCall}`}>
+                                      <span className="font-extrabold text-amber-600 bg-amber-500/10 px-1 rounded-[3px] text-[9px] uppercase shrink-0 mt-0.5 select-none">Call 2</span>
+                                      <span className="text-slate-600 truncate">{lead.secondCall}</span>
+                                    </div>
+                                  ) : null}
+                                  {lead.thirdCall ? (
+                                    <div className="flex items-start gap-1.5 text-[11px] bg-slate-50 border border-slate-200/60 rounded-[6px] px-2 py-1" title={`3rd Call: ${lead.thirdCall}`}>
+                                      <span className="font-extrabold text-emerald-600 bg-emerald-500/10 px-1 rounded-[3px] text-[9px] uppercase shrink-0 mt-0.5 select-none">Call 3</span>
+                                      <span className="text-slate-600 truncate">{lead.thirdCall}</span>
+                                    </div>
+                                  ) : null}
+                                  {!lead.firstCall && !lead.secondCall && !lead.thirdCall && (
+                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 italic">
+                                      <FiPhoneCall className="w-3.5 h-3.5 text-slate-300" />
+                                      <span>No calls logged yet</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-0.5">
+                                  <button
+                                    onClick={() => setViewingLead(lead)}
+                                    title="View Full Profile"
+                                    className="p-1.5 text-slate-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 rounded-[8px] transition-all cursor-pointer"
+                                  >
+                                    <FiExternalLink className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditLead(lead)}
+                                    title="Edit Record"
+                                    className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-500/5 rounded-[8px] transition-all cursor-pointer"
+                                  >
+                                    <FiEdit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteLead(lead._id, lead.guardianName)}
+                                    title="Delete"
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-500/5 rounded-[8px] transition-all cursor-pointer"
+                                  >
+                                    <FiTrash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
                           );
                         })}
                       </tbody>
