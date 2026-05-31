@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -53,6 +53,8 @@ export default function BossReportPage() {
   const [selectedWebinar, setSelectedWebinar] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [reportPage, setReportPage] = useState(1);
+  const REPORT_PER_PAGE = 20;
   const [viewLead, setViewLead] = useState<Lead | null>(null);
 
   const fetchData = async () => {
@@ -149,7 +151,7 @@ export default function BossReportPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans select-none">
-      <div className="max-w-7xl mx-auto p-4 md:p-6 flex flex-col gap-5">
+      <div className="w-full p-4 md:p-6 flex flex-col gap-5">
 
         {/* ── HEADER ── */}
         <header className="bg-white border border-slate-200 rounded-[14px] p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -176,7 +178,7 @@ export default function BossReportPage() {
         {/* ── WEBINAR FILTER TABS ── */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {["All", ...webinars.map(w => w.name)].map(name => (
-            <button key={name} onClick={() => setSelectedWebinar(name)}
+            <button key={name} onClick={() => { setSelectedWebinar(name); setReportPage(1); }}
               className={`px-4 py-2 rounded-[8px] text-xs font-bold whitespace-nowrap transition-all cursor-pointer border shrink-0 ${
                 selectedWebinar === name
                   ? "bg-[#3b82f6] text-white border-[#3b82f6] shadow-sm"
@@ -408,12 +410,12 @@ export default function BossReportPage() {
               <div className="relative flex-1">
                 <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input type="text" placeholder="Search by name, phone, address, webinar..."
-                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setReportPage(1); }}
                   className="w-full pl-11 pr-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 focus:border-[#3b82f6] focus:bg-white rounded-[8px] outline-none transition-all placeholder:text-slate-300 h-[42px] text-slate-800" />
               </div>
               <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-1 rounded-[8px] shrink-0 overflow-x-auto">
                 {["All","New","Contacted","Qualified","Lost","Sales"].map(s => (
-                  <button key={s} onClick={() => setStatusFilter(s)}
+                  <button key={s} onClick={() => { setStatusFilter(s); setReportPage(1); }}
                     className={`px-3 py-1.5 rounded-[6px] text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                       statusFilter === s ? "bg-white text-[#3b82f6] shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800"
                     }`}>
@@ -443,11 +445,12 @@ export default function BossReportPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredLeads.map((lead, rowIdx) => {
+                    {filteredLeads.slice((reportPage-1)*REPORT_PER_PAGE, reportPage*REPORT_PER_PAGE).map((lead, rowIdx) => {
+                      const absRow = (reportPage - 1) * REPORT_PER_PAGE + rowIdx;
                       const sc = STATUS_STYLE[lead.status] || STATUS_STYLE.New;
                       return (
                         <tr key={lead._id} className="hover:bg-slate-50/60 transition-colors text-xs font-medium">
-                          <td className="py-3 px-2 text-center text-[10px] font-bold text-slate-300 select-none">{rowIdx + 1}</td>
+                          <td className="py-3 px-2 text-center text-[10px] font-bold text-slate-300 select-none">{absRow + 1}</td>
                           <td className="py-3 px-4 font-bold text-slate-900 truncate">{lead.guardianName}</td>
                           <td className="py-3 px-4 text-slate-700">
                             <div className="font-bold truncate">{lead.studentName}</div>
@@ -490,9 +493,37 @@ export default function BossReportPage() {
             </div>
 
             {filteredLeads.length > 0 && (
-              <div className="px-4 py-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium bg-slate-50/50">
-                <span>Showing <strong className="text-slate-700">{filteredLeads.length}</strong> of <strong className="text-slate-700">{leads.length}</strong> leads</span>
-                <span className="text-[10px]">Read-only · No login required</span>
+              <div className="border-t border-slate-100 bg-slate-50/50">
+                {filteredLeads.length > REPORT_PER_PAGE && (() => {
+                  const totalPages = Math.ceil(filteredLeads.length / REPORT_PER_PAGE);
+                  return (
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-xs font-bold text-slate-400">
+                        Showing {(reportPage-1)*REPORT_PER_PAGE+1}–{Math.min(reportPage*REPORT_PER_PAGE, filteredLeads.length)} of {filteredLeads.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setReportPage(p => Math.max(1,p-1))} disabled={reportPage===1}
+                          className="px-2.5 py-1.5 text-xs font-bold rounded-[6px] border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer transition-all">
+                          ‹ Prev
+                        </button>
+                        {Array.from({length:totalPages},(_,i)=>i+1).map(p=>(
+                          <button key={p} onClick={()=>setReportPage(p)}
+                            className={`w-8 h-8 text-xs font-bold rounded-[6px] border transition-all cursor-pointer ${p===reportPage?"bg-[#3b82f6] text-white border-[#3b82f6] shadow-sm":"bg-white text-slate-600 border-slate-200 hover:bg-slate-100"}`}>
+                            {p}
+                          </button>
+                        ))}
+                        <button onClick={() => setReportPage(p => Math.min(totalPages,p+1))} disabled={reportPage===totalPages}
+                          className="px-2.5 py-1.5 text-xs font-bold rounded-[6px] border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer transition-all">
+                          Next ›
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="px-4 py-2 flex items-center justify-between text-xs text-slate-400 font-medium border-t border-slate-100">
+                  <span>{filteredLeads.length} records · Read-only</span>
+                  <span className="text-[10px]">No login required</span>
+                </div>
               </div>
             )}
           </div>

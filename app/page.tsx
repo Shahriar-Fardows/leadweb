@@ -117,6 +117,8 @@ export default function DashboardPortal() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [webinarFilter, setWebinarFilter] = useState<string>("All");
+  const [leadsPage, setLeadsPage] = useState(1);
+  const LEADS_PER_PAGE = 20;
   const [addressFilter, setAddressFilter] = useState<string>("All");
   const [callLogFilter, setCallLogFilter] = useState<string>("All");
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
@@ -2364,7 +2366,7 @@ export default function DashboardPortal() {
                         type="text"
                         placeholder="Search by guardian name, student name, phone, address..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => { setSearchQuery(e.target.value); setLeadsPage(1); }}
                         className="w-full pl-11 pr-5 py-3 text-sm font-semibold bg-white border border-slate-200 focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/10 rounded-[8px] outline-none transition-all placeholder:text-slate-300 h-[46px] text-slate-800"
                       />
                     </div>
@@ -2473,7 +2475,7 @@ export default function DashboardPortal() {
                     ].map((opt) => (
                       <button
                         key={opt.key}
-                        onClick={() => setStatusFilter(opt.key)}
+                        onClick={() => { setStatusFilter(opt.key); setLeadsPage(1); }}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-[8px] text-xs font-bold transition-all cursor-pointer border ${
                           statusFilter === opt.key
                             ? "bg-white border-slate-300 shadow-sm text-slate-900"
@@ -2518,7 +2520,8 @@ export default function DashboardPortal() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {filteredLeads.map((lead, rowIdx) => {
+                        {filteredLeads.slice((leadsPage-1)*LEADS_PER_PAGE, leadsPage*LEADS_PER_PAGE).map((lead, rowIdx) => {
+                          const absIdx = (leadsPage - 1) * LEADS_PER_PAGE + rowIdx;
                           const sc = STATUS_CONFIG[lead.status] || STATUS_CONFIG.New;
                           const callCount = [lead.firstCall, lead.secondCall, lead.thirdCall, lead.fourthCall].filter(Boolean).length;
                           return (
