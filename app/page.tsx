@@ -137,6 +137,7 @@ export default function DashboardPortal() {
   // Edit Lead page state
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
+  const [viewingCallsLead, setViewingCallsLead] = useState<Lead | null>(null);
   const [editGName, setEditGName] = useState("");
   const [editSName, setEditSName] = useState("");
   const [editSAge, setEditSAge] = useState("");
@@ -2182,6 +2183,83 @@ export default function DashboardPortal() {
             </div>
           )}
 
+          {/* ── Lead Call Logs Modal ── */}
+          {viewingCallsLead && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setViewingCallsLead(null)}>
+              <div className="bg-white rounded-t-[20px] sm:rounded-[16px] shadow-2xl w-full sm:max-w-xl max-h-[90vh] overflow-y-auto animate-fadeIn" onClick={e => e.stopPropagation()}>
+                
+                {/* Modal Header */}
+                <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5 flex items-center justify-between z-10 rounded-t-[20px] sm:rounded-t-[16px]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center rounded-[10px]">
+                      <FiPhoneCall className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 leading-tight">Call Attempts & Logs</h3>
+                      <p className="text-xs text-slate-400 font-medium mt-0.5">
+                        For student: <strong className="text-slate-700 font-bold">{viewingCallsLead.studentName}</strong> ({viewingCallsLead.phone})
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setViewingCallsLead(null)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-[8px] transition-colors cursor-pointer text-xl font-bold">×</button>
+                </div>
+
+                <div className="p-6 flex flex-col gap-6">
+                  <div className="flex flex-col gap-4">
+                    {(() => {
+                      const entries = [
+                        { num: 1, text: viewingCallsLead.firstCall, color: "border-blue-200 bg-blue-50/50", labelColor: "bg-blue-100 text-[#3b82f6]", textColor: "text-blue-600" },
+                        { num: 2, text: viewingCallsLead.secondCall, color: "border-amber-200 bg-amber-50/50", labelColor: "bg-amber-100 text-amber-700", textColor: "text-amber-600" },
+                        { num: 3, text: viewingCallsLead.thirdCall, color: "border-emerald-200 bg-emerald-50/50", labelColor: "bg-emerald-100 text-emerald-700", textColor: "text-emerald-600" },
+                        { num: 4, text: (viewingCallsLead as any).fourthCall, color: "border-violet-200 bg-violet-50/50", labelColor: "bg-violet-100 text-violet-700", textColor: "text-violet-600" },
+                      ].filter(e => e.text);
+
+                      if (entries.length === 0) return (
+                        <div className="py-10 text-center text-sm text-slate-400 font-bold bg-slate-50 rounded-[12px] border border-slate-200/60 flex flex-col items-center gap-2">
+                          <FiPhoneCall className="w-8 h-8 text-slate-300" />
+                          <span>No call logs recorded yet</span>
+                        </div>
+                      );
+
+                      return entries.map(({ num, text, color, labelColor, textColor }) => {
+                        const isNoResp = text!.toLowerCase().includes("no response") || text!.toLowerCase().includes("did not connect");
+                        return (
+                          <div key={num} className={`rounded-[12px] border p-4 shadow-sm transition-all ${isNoResp ? "bg-red-50/50 border-red-200" : color}`}>
+                            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-[4px] uppercase tracking-wider ${isNoResp ? "bg-red-100 text-red-600" : labelColor}`}>
+                                  Call #{num}
+                                </span>
+                                <span className={`text-xs font-bold ${isNoResp ? "text-red-500" : textColor}`}>
+                                  {isNoResp ? "No Response / Connected Error" : "Connected & Answered"}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed font-semibold">
+                              {text}
+                            </p>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-slate-100">
+                    <button onClick={() => { setViewingCallsLead(null); handleEditLead(viewingCallsLead); }}
+                      className="flex-1 py-3 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-xs font-bold rounded-[8px] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
+                      <FiEdit3 className="w-4 h-4" /> Edit Call Log Details
+                    </button>
+                    <button onClick={() => setViewingCallsLead(null)}
+                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-[8px] transition-all cursor-pointer">
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
           {/* CSV Import Progress Overlay */}
           {csvProgress.active && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -2402,159 +2480,139 @@ export default function DashboardPortal() {
                       <span className="text-sm font-bold">Querying live CRM records...</span>
                     </div>
                   ) : filteredLeads.length > 0 ? (
-                    <table className="w-full text-left border-collapse min-w-[1200px]">
+                    <table className="w-full text-left border-collapse min-w-[1550px]">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider select-none">
-                          <th className="py-3.5 px-4 w-[48px] text-center">#</th>
-                          <th className="py-3.5 px-4 w-[240px]">Student / Guardian</th>
-                          <th className="py-3.5 px-4 w-[160px]">Contact Info</th>
-                          <th className="py-3.5 px-4 w-[120px]">Location</th>
-                          <th className="py-3.5 px-4 w-[110px] text-center">Status</th>
-                          <th className="py-3.5 px-4 w-[160px]">Webinar Assigned</th>
-                          <th className="py-3.5 px-4 w-[360px]">Call History & Notes</th>
-                          <th className="py-3.5 px-4 w-[110px] text-right">Actions</th>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-[12px] font-extrabold text-slate-500 uppercase tracking-wider select-none">
+                          <th className="py-4 px-4 w-[50px] text-center">#</th>
+                          <th className="py-4 px-4 w-[180px]">Student Name</th>
+                          <th className="py-4 px-4 w-[180px]">Guardian Name</th>
+                          <th className="py-4 px-4 w-[80px] text-center">Age</th>
+                          <th className="py-4 px-4 w-[100px] text-center">Class</th>
+                          <th className="py-4 px-4 w-[150px]">Phone Number</th>
+                          <th className="py-4 px-4 w-[200px]">Email Address</th>
+                          <th className="py-4 px-4 w-[160px]">Location / Area</th>
+                          <th className="py-4 px-4 w-[120px] text-center">Lead Status</th>
+                          <th className="py-4 px-4 w-[180px]">Assigned Campaign / Webinar</th>
+                          <th className="py-4 px-4 w-[140px] text-center">Call Logs</th>
+                          <th className="py-4 px-4 w-[120px] text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-200">
                         {filteredLeads.map((lead, rowIdx) => {
                           const sc = STATUS_CONFIG[lead.status] || STATUS_CONFIG.New;
+                          const callCount = [lead.firstCall, lead.secondCall, lead.thirdCall, lead.fourthCall].filter(Boolean).length;
                           return (
-                            <tr key={lead._id} className="hover:bg-blue-50/20 transition-colors text-xs animate-fadeIn">
+                            <tr key={lead._id} className="hover:bg-slate-50/80 transition-colors text-sm font-medium">
                               {/* # */}
-                              <td className="py-3.5 px-4 text-center text-[10px] font-bold text-slate-300">
+                              <td className="py-4 px-4 text-center text-slate-400 font-bold">
                                 {rowIdx + 1}
                               </td>
 
-                              {/* Student / Guardian */}
-                              <td className="py-3.5 px-4">
-                                <div className="font-bold text-slate-800 truncate" title={lead.studentName}>
-                                  {lead.studentName === "N/A" || !lead.studentName ? (
-                                    <span className="text-slate-300 italic font-normal">—</span>
-                                  ) : (
-                                    lead.studentName
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] font-semibold text-slate-500">
-                                  {lead.studentAge && (
-                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded-[4px]">
-                                      {lead.studentAge} yrs
-                                    </span>
-                                  )}
-                                  {lead.studentClass && (
-                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded-[4px]">
-                                      Class {lead.studentClass}
-                                    </span>
-                                  )}
-                                  {lead.guardianName && lead.guardianName !== "N/A" && (
-                                    <span className="text-slate-400 font-medium truncate max-w-[120px]" title={`Guardian: ${lead.guardianName}`}>
-                                      • Guardian: {lead.guardianName}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-
-                              {/* Contact Info */}
-                              <td className="py-3.5 px-4">
-                                <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
-                                  {lead.phone}
-                                </div>
-                                {lead.email ? (
-                                  <div className="text-[11px] text-slate-400 font-medium mt-0.5 truncate max-w-[140px]" title={lead.email}>
-                                    {lead.email}
-                                  </div>
+                              {/* Student Name */}
+                              <td className="py-4 px-4 text-slate-900 font-bold truncate max-w-[170px]" title={lead.studentName}>
+                                {lead.studentName === "N/A" || !lead.studentName ? (
+                                  <span className="text-slate-300 italic font-normal">—</span>
                                 ) : (
-                                  <div className="text-[10px] text-slate-300 italic mt-0.5">No email</div>
+                                  lead.studentName
                                 )}
                               </td>
 
-                              {/* Location */}
-                              <td className="py-3.5 px-4">
+                              {/* Guardian Name */}
+                              <td className="py-4 px-4 text-slate-800 font-semibold truncate max-w-[170px]" title={lead.guardianName}>
+                                {lead.guardianName === "N/A" || !lead.guardianName ? (
+                                  <span className="text-slate-300 italic font-normal">—</span>
+                                ) : (
+                                  lead.guardianName
+                                )}
+                              </td>
+
+                              {/* Age */}
+                              <td className="py-4 px-4 text-center text-slate-600 font-semibold">
+                                {lead.studentAge || <span className="text-slate-300 font-normal">—</span>}
+                              </td>
+
+                              {/* Class */}
+                              <td className="py-4 px-4 text-center text-slate-600 font-semibold">
+                                {lead.studentClass ? `Class ${lead.studentClass}` : <span className="text-slate-300 font-normal">—</span>}
+                              </td>
+
+                              {/* Phone Number */}
+                              <td className="py-4 px-4 text-slate-900 font-bold">
+                                {lead.phone}
+                              </td>
+
+                              {/* Email Address */}
+                              <td className="py-4 px-4 text-slate-600 truncate max-w-[190px]" title={lead.email}>
+                                {lead.email || <span className="text-slate-300 italic">—</span>}
+                              </td>
+
+                              {/* Location / Area */}
+                              <td className="py-4 px-4 text-slate-600">
                                 {lead.address === "N/A" || !lead.address ? (
-                                  <span className="text-slate-300 italic text-[11px]">—</span>
+                                  <span className="text-slate-300 font-normal">—</span>
                                 ) : (
-                                  <div className="flex items-center gap-1 text-slate-600 font-semibold text-xs">
-                                    <FiMapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                    <span className="truncate max-w-[110px]" title={lead.address}>
-                                      {lead.address}
-                                    </span>
-                                  </div>
+                                  <span className="truncate max-w-[150px] font-semibold" title={lead.address}>
+                                    {lead.address}
+                                  </span>
                                 )}
                               </td>
 
-                              {/* Status */}
-                              <td className="py-3.5 px-4 text-center">
-                                <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${sc.bg} ${sc.border} ${sc.text}`}>
+                              {/* Lead Status */}
+                              <td className="py-4 px-4 text-center">
+                                <span className={`inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${sc.bg} ${sc.border} ${sc.text}`}>
                                   <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                                   {lead.status}
                                 </span>
                               </td>
 
-                              {/* Webinar Assigned */}
-                              <td className="py-3.5 px-4">
+                              {/* Assigned Campaign / Webinar */}
+                              <td className="py-4 px-4 text-slate-700 font-semibold truncate max-w-[170px]" title={lead.webinar}>
                                 {lead.webinar ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <FiVideo className="w-3.5 h-3.5 text-[#3b82f6] shrink-0" />
-                                    <span className="text-[11px] font-semibold text-slate-700 truncate max-w-[140px]" title={lead.webinar}>
-                                      {lead.webinar}
-                                    </span>
-                                  </div>
+                                  <span className="text-[#3b82f6] bg-[#3b82f6]/5 px-2 py-1 rounded-[6px] border border-[#3b82f6]/10 text-xs font-bold">
+                                    {lead.webinar}
+                                  </span>
                                 ) : (
-                                  <span className="text-slate-300 italic text-[11px]">Not assigned</span>
+                                  <span className="text-slate-300 italic font-normal">—</span>
                                 )}
                               </td>
 
-                              {/* Call History & Notes */}
-                              <td className="py-3.5 px-4">
-                                <div className="flex flex-col gap-1.5 max-w-[340px]">
-                                  {lead.firstCall ? (
-                                    <div className="flex items-start gap-1.5 text-[11px] bg-slate-50 border border-slate-200/60 rounded-[6px] px-2 py-1" title={`1st Call: ${lead.firstCall}`}>
-                                      <span className="font-extrabold text-[#3b82f6] bg-[#3b82f6]/10 px-1 rounded-[3px] text-[9px] uppercase shrink-0 mt-0.5 select-none">Call 1</span>
-                                      <span className="text-slate-600 truncate">{lead.firstCall}</span>
-                                    </div>
-                                  ) : null}
-                                  {lead.secondCall ? (
-                                    <div className="flex items-start gap-1.5 text-[11px] bg-slate-50 border border-slate-200/60 rounded-[6px] px-2 py-1" title={`2nd Call: ${lead.secondCall}`}>
-                                      <span className="font-extrabold text-amber-600 bg-amber-500/10 px-1 rounded-[3px] text-[9px] uppercase shrink-0 mt-0.5 select-none">Call 2</span>
-                                      <span className="text-slate-600 truncate">{lead.secondCall}</span>
-                                    </div>
-                                  ) : null}
-                                  {lead.thirdCall ? (
-                                    <div className="flex items-start gap-1.5 text-[11px] bg-slate-50 border border-slate-200/60 rounded-[6px] px-2 py-1" title={`3rd Call: ${lead.thirdCall}`}>
-                                      <span className="font-extrabold text-emerald-600 bg-emerald-500/10 px-1 rounded-[3px] text-[9px] uppercase shrink-0 mt-0.5 select-none">Call 3</span>
-                                      <span className="text-slate-600 truncate">{lead.thirdCall}</span>
-                                    </div>
-                                  ) : null}
-                                  {!lead.firstCall && !lead.secondCall && !lead.thirdCall && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 italic">
-                                      <FiPhoneCall className="w-3.5 h-3.5 text-slate-300" />
-                                      <span>No calls logged yet</span>
-                                    </div>
-                                  )}
-                                </div>
+                              {/* Call Logs */}
+                              <td className="py-4 px-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingCallsLead(lead)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold transition-all cursor-pointer border ${
+                                    callCount > 0
+                                      ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700"
+                                      : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-500"
+                                  }`}
+                                >
+                                  <FiPhoneCall className="w-3.5 h-3.5" />
+                                  <span>Calls {callCount > 0 ? `(${callCount})` : ""}</span>
+                                </button>
                               </td>
 
                               {/* Actions */}
-                              <td className="py-3.5 px-4 text-right">
-                                <div className="flex items-center justify-end gap-0.5">
+                              <td className="py-4 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => setViewingLead(lead)}
                                     title="View Full Profile"
-                                    className="p-1.5 text-slate-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 rounded-[8px] transition-all cursor-pointer"
+                                    className="p-2 text-slate-400 hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 rounded-[8px] transition-colors cursor-pointer"
                                   >
                                     <FiExternalLink className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => handleEditLead(lead)}
                                     title="Edit Record"
-                                    className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-500/5 rounded-[8px] transition-all cursor-pointer"
+                                    className="p-2 text-slate-400 hover:text-amber-650 hover:bg-amber-500/5 rounded-[8px] transition-colors cursor-pointer"
                                   >
                                     <FiEdit3 className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteLead(lead._id, lead.guardianName)}
                                     title="Delete"
-                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-500/5 rounded-[8px] transition-all cursor-pointer"
+                                    className="p-2 text-slate-400 hover:text-red-650 hover:bg-red-500/5 rounded-[8px] transition-colors cursor-pointer"
                                   >
                                     <FiTrash2 className="w-4 h-4" />
                                   </button>
