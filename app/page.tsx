@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -822,9 +822,9 @@ export default function DashboardPortal() {
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
 
-      // Phone: if missing generate a placeholder so the row still imports
-      const phone = get(row, "phone", "mobile", "contact", "phone_number")
-        || `IMPORT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      // Skip row if phone is missing - no IMPORT- placeholders
+      const phone = get(row, "phone", "mobile", "contact", "phone_number");
+      if (!phone) { skipped++; setCsvProgress({ active: true, current: i + 1, total, imported, skipped, fileName: file.name }); continue; }
 
       const rawStatus = get(row, "status");
       const status = validStatuses.includes(rawStatus) ? rawStatus : "New";
@@ -1331,13 +1331,17 @@ export default function DashboardPortal() {
                 </div>
               </section>
 
-              {/* Row 1: Age Group Area Line Chart + Call Convert Pie Chart */}
+
+              {/* ── CHART ROW 1: Column Chart (Age) + Pie Chart (Call Rate) ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Age Group Distribution Area Chart */}
-                <div className="bg-white border border-slate-200 rounded-[12px] p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <h3 className="text-sm font-bold text-slate-800">Age Group Distribution</h3>
-                  <p className="text-[10px] text-slate-400 font-bold mt-0.5 mb-5">Which age group has the most students</p>
+
+                {/* Age Group — SVG Column (Vertical Bar) Chart */}
+                <div className="bg-white border border-slate-200 rounded-[14px] p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-sm font-bold text-slate-800">Age Group Distribution</h3>
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-[5px]">Column Chart</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium mb-4">Which age group has the most students</p>
                   {(() => {
                     const groups: [string, string, number, number][] = [
                       ["3-5", "#3b82f6", 0, 5], ["6-8", "#f59e0b", 6, 8],
@@ -1350,176 +1354,98 @@ export default function DashboardPortal() {
                         label, color,
                         count: leads.filter(l => { const a = parseInt(l.studentAge || ""); return !isNaN(a) && a >= min && a <= max; }).length
                       })),
-                      ...(unknown > 0 ? [{ label: "?", color: "#94a3b8", count: unknown }] : [])
+                      ...(unknown > 0 ? [{ label: "N/A", color: "#94a3b8", count: unknown }] : [])
                     ].filter(g => g.count > 0);
-                    
-                    if (data.length === 0) return <div className="h-40 flex items-center justify-center text-xs text-slate-400 font-bold">No age data available</div>;
-                    
+                    if (data.length === 0) return <div className="h-44 flex items-center justify-center text-xs text-slate-400 font-bold">No age data available</div>;
                     const maxV = Math.max(...data.map(g => g.count), 1);
-                    const W = 320, H = 140, PL = 28, PB = 28, PT = 12;
-                    const stepX = (W - PL) / Math.max(data.length - 1, 1);
-                    
-                    const points = data.map((g, i) => {
-                      const x = PL + i * stepX;
-                      const y = PT + H - (g.count / maxV) * H;
-                      return { x, y, label: g.label, count: g.count, color: g.color };
-                    });
-                    
-                    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                    const areaD = `${pathD} L ${points[points.length - 1].x} ${PT + H} L ${points[0].x} ${PT + H} Z`;
-                    
+                    const W = 320, H = 150, PL = 30, PB = 28, PT = 10, GAP = 8;
+                    const bW = Math.max(Math.floor((W - PL - GAP * (data.length - 1)) / data.length), 18);
+                    const yLines = [0, Math.round(maxV / 2), maxV];
                     return (
                       <svg viewBox={`0 0 ${W + 10} ${H + PB + PT}`} className="w-full" style={{ overflow: "visible" }}>
-                        <defs>
-                          <linearGradient id="ageAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-                        {/* Grid lines */}
-                        {[0, Math.ceil(maxV / 2), maxV].map((v, i) => {
+                        {yLines.map((v, i) => {
                           const y = PT + H - (v / maxV) * H;
-                          return (
-                            <g key={i}>
-                              <line x1={PL} y1={y} x2={W + 10} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                              <text x={PL - 6} y={y + 3.5} textAnchor="end" fontSize="7" fill="#94a3b8" fontWeight="bold">{v}</text>
-                            </g>
-                          );
+                          return <g key={i}>
+                            <line x1={PL} y1={y} x2={W + 10} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray={i > 0 ? "4 3" : "none"} />
+                            <text x={PL - 5} y={y + 3.5} textAnchor="end" fontSize="6.5" fill="#94a3b8" fontWeight="700">{v}</text>
+                          </g>;
                         })}
-                        
-                        <path d={areaD} fill="url(#ageAreaGrad)" />
-                        <path d={pathD} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        
-                        {points.map((p, i) => (
-                          <g key={p.label}>
-                            <circle
-                              cx={p.x}
-                              cy={p.y}
-                              r="4.5"
-                              fill="#ffffff"
-                              stroke={p.color}
-                              strokeWidth="2.5"
-                              className="cursor-pointer transition-all hover:r-6"
-                            />
-                            <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="8" fill="#334155" fontWeight="extrabold">{p.count}</text>
-                            <text x={p.x} y={PT + H + 16} textAnchor="middle" fontSize="7.5" fill="#64748b" fontWeight="extrabold">{p.label}</text>
-                          </g>
-                        ))}
-                        <line x1={PL} y1={PT + H} x2={W + 10} y2={PT + H} stroke="#e2e8f0" strokeWidth="1" />
+                        {data.map(({ label, color, count }, i) => {
+                          const bH = Math.max((count / maxV) * H, 3);
+                          const x = PL + i * (bW + GAP);
+                          const y = PT + H - bH;
+                          return <g key={label}>
+                            <rect x={x} y={y} width={bW} height={bH} fill={color} rx="4" opacity="0.9" />
+                            <text x={x + bW / 2} y={y - 4} textAnchor="middle" fontSize="7.5" fill="#334155" fontWeight="800">{count}</text>
+                            <text x={x + bW / 2} y={PT + H + PB - 10} textAnchor="middle" fontSize="7.5" fill="#64748b" fontWeight="700">{label}</text>
+                          </g>;
+                        })}
+                        <line x1={PL} y1={PT + H} x2={W + 10} y2={PT + H} stroke="#e2e8f0" strokeWidth="1.2" />
+                        {/* X axis label */}
+                        <text x={(W + 10) / 2} y={H + PB + PT} textAnchor="middle" fontSize="6.5" fill="#94a3b8" fontWeight="700">Age Group (years)</text>
                       </svg>
                     );
                   })()}
                 </div>
 
-                {/* Call Convert Rate Pie Chart */}
-                <div className="bg-white border border-slate-200 rounded-[12px] p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <h3 className="text-sm font-bold text-slate-800">Call Convert Rate</h3>
-                  <p className="text-[10px] text-slate-400 font-bold mt-0.5 mb-4">Answered vs No Response across all call logs</p>
+                {/* Call Convert — Pie Chart */}
+                <div className="bg-white border border-slate-200 rounded-[14px] p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-sm font-bold text-slate-800">Call Convert Rate</h3>
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-[5px]">Pie Chart</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium mb-4">Answered vs No Response across all call logs</p>
                   {(() => {
                     const allLogs = leads.flatMap(l => l.callLogs || []);
                     const answered = allLogs.filter(l => l.connected).length;
                     const noResp = allLogs.length - answered;
                     const total = allLogs.length;
-                    const aPct = total ? Math.round((answered / total) * 100) : 0;
-                    const nPct = total ? (100 - aPct) : 0;
-                    
                     if (total === 0) return <div className="h-44 flex items-center justify-center text-xs text-slate-400 font-bold">No call logs recorded yet</div>;
-                    
-                    const CX = 80, CY = 80, R = 68;
                     const slices = [
-                      { label: "Answered", count: answered, pct: aPct, color: "#10b981", activeColor: "#059669" },
-                      { label: "No Response", count: noResp, pct: nPct, color: "#ef4444", activeColor: "#dc2626" }
+                      { label: "Answered", count: answered, color: "#10b981" },
+                      { label: "No Response", count: noResp, color: "#ef4444" },
                     ].filter(s => s.count > 0);
-                    
-                    let accumulatedAngle = -Math.PI / 2;
-                    
+                    const CX = 80, CY = 80, R = 68;
+                    let ang = -Math.PI / 2;
+                    const paths = slices.map(s => {
+                      const frac = s.count / total;
+                      const sA = ang; ang += frac * 2 * Math.PI; const eA = ang;
+                      const x1 = CX + R * Math.cos(sA), y1 = CY + R * Math.sin(sA);
+                      const x2 = CX + R * Math.cos(eA), y2 = CY + R * Math.sin(eA);
+                      const lg = frac > 0.5 ? 1 : 0;
+                      const path = `M${CX},${CY} L${x1},${y1} A${R},${R} 0 ${lg},1 ${x2},${y2} Z`;
+                      const pct = Math.round(frac * 100);
+                      const midA = sA + (frac * Math.PI);
+                      const lx = CX + (R * 0.65) * Math.cos(midA);
+                      const ly = CY + (R * 0.65) * Math.sin(midA);
+                      return { ...s, path, pct, lx, ly };
+                    });
                     return (
                       <div className="flex items-center gap-6">
-                        <svg viewBox="0 0 160 160" className="w-40 h-40 shrink-0 select-none">
-                          {slices.length === 1 ? (
-                            <circle
-                              cx={CX}
-                              cy={CY}
-                              r={R}
-                              fill={slices[0].color}
-                              stroke="#ffffff"
-                              strokeWidth="2"
-                              onMouseEnter={() => setHoveredCallIdx(0)}
-                              onMouseLeave={() => setHoveredCallIdx(null)}
-                              className="transition-all duration-300 cursor-pointer"
-                              style={{
-                                transform: hoveredCallIdx === 0 ? "scale(1.05)" : "scale(1)",
-                                transformOrigin: `${CX}px ${CY}px`
-                              }}
-                            />
-                          ) : (
-                            slices.map((slice, i) => {
-                              const angleSize = (slice.pct / 100) * 2 * Math.PI;
-                              const startA = accumulatedAngle;
-                              const endA = accumulatedAngle + angleSize;
-                              accumulatedAngle = endA;
-                              
-                              const x1 = CX + R * Math.cos(startA);
-                              const y1 = CY + R * Math.sin(startA);
-                              const x2 = CX + R * Math.cos(endA);
-                              const y2 = CY + R * Math.sin(endA);
-                              const largeArc = angleSize > Math.PI ? 1 : 0;
-                              const pathD = `M ${CX},${CY} L ${x1},${y1} A ${R},${R} 0 ${largeArc},1 ${x2},${y2} Z`;
-                              
-                              const isHovered = hoveredCallIdx === i;
-                              const midAngle = startA + angleSize / 2;
-                              const dx = isHovered ? Math.cos(midAngle) * 5 : 0;
-                              const dy = isHovered ? Math.sin(midAngle) * 5 : 0;
-                              
-                              return (
-                                <path
-                                  key={slice.label}
-                                  d={pathD}
-                                  fill={isHovered ? slice.activeColor : slice.color}
-                                  stroke="#ffffff"
-                                  strokeWidth="1.5"
-                                  onMouseEnter={() => setHoveredCallIdx(i)}
-                                  onMouseLeave={() => setHoveredCallIdx(null)}
-                                  className="transition-all duration-300 cursor-pointer"
-                                  style={{
-                                    transform: `translate(${dx}px, ${dy}px)`,
-                                    filter: isHovered ? "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" : "none"
-                                  }}
-                                />
-                              );
-                            })
-                          )}
-                          <circle cx={CX} cy={CY} r="32" fill="#ffffff" />
-                          <text x={CX} y={CY + 3} textAnchor="middle" fontSize="11" fontWeight="extrabold" fill="#1e293b">{total}</text>
-                          <text x={CX} y={CY + 12} textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="bold">CALLS</text>
+                        <svg viewBox="0 0 160 160" className="w-40 h-40 shrink-0">
+                          {paths.map((s, i) => (
+                            <path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth="2" opacity="0.9" />
+                          ))}
+                          {paths.map((s, i) => (
+                            <text key={i} x={s.lx} y={s.ly + 3} textAnchor="middle" fontSize="8.5" fill="white" fontWeight="800">{s.pct}%</text>
+                          ))}
                         </svg>
-                        
-                        <div className="flex flex-col gap-3 flex-1">
-                          {slices.map((slice, i) => {
-                            const isHovered = hoveredCallIdx === i;
-                            const tc = slice.label === "Answered" ? "text-emerald-700" : "text-red-700";
-                            const bg = slice.label === "Answered" ? "bg-emerald-50" : "bg-red-50";
-                            const border = slice.label === "Answered" ? "border-emerald-100" : "border-red-100";
-                            return (
-                              <div
-                                key={slice.label}
-                                onMouseEnter={() => setHoveredCallIdx(i)}
-                                onMouseLeave={() => setHoveredCallIdx(null)}
-                                className={`flex items-center gap-3 p-3 rounded-[10px] border transition-all cursor-pointer ${bg} ${border} ${
-                                  isHovered ? "shadow-sm border-slate-300 scale-[1.02]" : ""
-                                }`}
-                              >
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: slice.color }} />
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex justify-between items-center mb-0.5">
-                                    <span className={`text-xs font-bold ${tc}`}>{slice.label}</span>
-                                    <span className={`text-xs font-extrabold ${tc}`}>{slice.pct}%</span>
-                                  </div>
-                                  <span className={`text-[10px] font-bold ${tc} opacity-70 block`}>{slice.count} calls</span>
+                        <div className="flex flex-col gap-4 flex-1">
+                          {paths.map(s => (
+                            <div key={s.label} className="flex flex-col gap-1.5">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                                  <span className="text-xs font-bold text-slate-700">{s.label}</span>
                                 </div>
+                                <span className="text-xs font-bold" style={{ color: s.color }}>{s.pct}% · {s.count}</span>
                               </div>
-                            );
-                          })}
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${s.pct}%`, backgroundColor: s.color }} />
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-[10px] text-slate-400 font-bold pt-1 border-t border-slate-100">{total} total call entries</p>
                         </div>
                       </div>
                     );
@@ -1527,192 +1453,102 @@ export default function DashboardPortal() {
                 </div>
               </div>
 
-              {/* Row 2: Top Areas Pie Chart + Webinar & Sales Funnel Progression Chart */}
+              {/* ── CHART ROW 2: Pie Chart (Top Areas) + Bar Chart (Webinar & Sales) ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Top Areas Pie Chart */}
-                <div className="bg-white border border-slate-200 rounded-[12px] p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <h3 className="text-sm font-bold text-slate-800">Top Areas</h3>
-                  <p className="text-[10px] text-slate-400 font-bold mt-0.5 mb-5">Lead distribution by location</p>
+
+                {/* Top Areas — Pie Chart */}
+                <div className="bg-white border border-slate-200 rounded-[14px] p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-sm font-bold text-slate-800">Top Areas</h3>
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-[5px]">Pie Chart</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium mb-4">Which area has the most leads</p>
                   {(() => {
                     const mp: Record<string, number> = {};
                     leads.forEach(l => { if (l.address && l.address !== "N/A") mp[l.address] = (mp[l.address] || 0) + 1; });
-                    const rows = Object.entries(mp).sort((a, b) => b[1] - a[1]).slice(0, 7);
-                    
+                    const rows = Object.entries(mp).sort((a, b) => b[1] - a[1]).slice(0, 8);
                     if (rows.length === 0) return <div className="h-52 flex items-center justify-center text-xs text-slate-400 font-bold">No address data available</div>;
-                    
-                    const COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
+                    const COLORS = ["#3b82f6","#f59e0b","#10b981","#ef4444","#8b5cf6","#06b6d4","#f97316","#ec4899"];
                     const total = rows.reduce((s, [, v]) => s + v, 0);
-                    
-                    const CX = 80, CY = 80, R = 68;
-                    let accumulatedAngle = -Math.PI / 2;
-                    
+                    const CX = 80, CY = 80, R = 70, IR = 32;
+                    let ang = -Math.PI / 2;
                     const segs = rows.map(([label, count], i) => {
                       const frac = count / total;
-                      const angleSize = frac * 2 * Math.PI;
-                      const startA = accumulatedAngle;
-                      const endA = accumulatedAngle + angleSize;
-                      accumulatedAngle = endA;
-                      
-                      const x1 = CX + R * Math.cos(startA);
-                      const y1 = CY + R * Math.sin(startA);
-                      const x2 = CX + R * Math.cos(endA);
-                      const y2 = CY + R * Math.sin(endA);
-                      const largeArc = angleSize > Math.PI ? 1 : 0;
-                      const path = `M ${CX},${CY} L ${x1},${y1} A ${R},${R} 0 ${largeArc},1 ${x2},${y2} Z`;
-                      
-                      return {
-                        path,
-                        color: COLORS[i % COLORS.length],
-                        label,
-                        count,
-                        pct: Math.round(frac * 100),
-                        startA,
-                        angleSize
-                      };
+                      const sA = ang; ang += frac * 2 * Math.PI; const eA = ang;
+                      const x1 = CX + R * Math.cos(sA), y1 = CY + R * Math.sin(sA);
+                      const x2 = CX + R * Math.cos(eA), y2 = CY + R * Math.sin(eA);
+                      const ix1 = CX + IR * Math.cos(sA), iy1 = CY + IR * Math.sin(sA);
+                      const ix2 = CX + IR * Math.cos(eA), iy2 = CY + IR * Math.sin(eA);
+                      const lg = frac > 0.5 ? 1 : 0;
+                      const path = `M${ix1},${iy1} L${x1},${y1} A${R},${R} 0 ${lg},1 ${x2},${y2} L${ix2},${iy2} A${IR},${IR} 0 ${lg},0 ${ix1},${iy1} Z`;
+                      return { path, color: COLORS[i % COLORS.length], label, count, pct: Math.round(frac * 100) };
                     });
-                    
                     return (
-                      <div className="flex items-center gap-5">
-                        <svg viewBox="0 0 160 160" className="w-44 h-44 shrink-0 select-none">
-                          {segs.map((s, i) => {
-                            const isHovered = hoveredAreaIdx === i;
-                            const midAngle = s.startA + s.angleSize / 2;
-                            const dx = isHovered ? Math.cos(midAngle) * 5 : 0;
-                            const dy = isHovered ? Math.sin(midAngle) * 5 : 0;
-                            return (
-                              <path
-                                key={i}
-                                d={s.path}
-                                fill={s.color}
-                                opacity={isHovered ? 1 : 0.9}
-                                stroke="#ffffff"
-                                strokeWidth="1.5"
-                                onMouseEnter={() => setHoveredAreaIdx(i)}
-                                onMouseLeave={() => setHoveredAreaIdx(null)}
-                                className="transition-all duration-300 cursor-pointer"
-                                style={{
-                                  transform: `translate(${dx}px, ${dy}px)`,
-                                  filter: isHovered ? "drop-shadow(0 4px 6px rgba(0,0,0,0.12))" : "none"
-                                }}
-                              />
-                            );
-                          })}
-                          <circle cx={CX} cy={CY} r="32" fill="#ffffff" />
-                          <text x={CX} y={CY + 3} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#1e293b">{total}</text>
-                          <text x={CX} y={CY + 11} textAnchor="middle" fontSize="5" fill="#94a3b8" fontWeight="bold">TOTAL</text>
+                      <div className="flex items-center gap-4">
+                        <svg viewBox="0 0 160 160" className="w-44 h-44 shrink-0">
+                          {segs.map((s, i) => <path key={i} d={s.path} fill={s.color} stroke="white" strokeWidth="1.5" opacity="0.92" />)}
+                          <text x={CX} y={CY - 6} textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1e293b">{total}</text>
+                          <text x={CX} y={CY + 8} textAnchor="middle" fontSize="6" fill="#94a3b8" fontWeight="700">TOTAL LEADS</text>
                         </svg>
-                        
                         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                          {segs.map((s, i) => {
-                            const isHovered = hoveredAreaIdx === i;
-                            return (
-                              <div
-                                key={i}
-                                onMouseEnter={() => setHoveredAreaIdx(i)}
-                                onMouseLeave={() => setHoveredAreaIdx(null)}
-                                className={`flex items-center gap-2 p-1.5 rounded-[6px] border border-transparent transition-all cursor-pointer ${
-                                  isHovered ? "bg-slate-50 border-slate-200/80 shadow-sm scale-[1.02]" : ""
-                                }`}
-                              >
-                                <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ backgroundColor: s.color }} />
-                                <span className="text-[11px] font-bold text-slate-600 truncate flex-1" title={s.label}>{s.label}</span>
-                                <span className="text-[11px] font-bold text-slate-400 shrink-0">{s.count} ({s.pct}%)</span>
-                              </div>
-                            );
-                          })}
+                          {segs.map((s, i) => (
+                            <div key={i} className="flex items-center gap-2 min-w-0">
+                              <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ backgroundColor: s.color }} />
+                              <span className="text-[11px] font-bold text-slate-600 truncate flex-1" title={s.label}>{s.label}</span>
+                              <span className="text-[11px] font-bold text-slate-400 shrink-0 tabular-nums">{s.count} <span className="text-slate-300">({s.pct}%)</span></span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     );
                   })()}
                 </div>
 
-                {/* Funnel progression chart */}
-                <div className="bg-white border border-slate-200 rounded-[12px] p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <h3 className="text-sm font-bold text-slate-800">Webinar Join &amp; Sales</h3>
-                  <p className="text-[10px] text-slate-400 font-bold mt-0.5 mb-5">Lead Conversion Funnel Progression Stages</p>
+                {/* Webinar & Sales — Horizontal Bar Chart */}
+                <div className="bg-white border border-slate-200 rounded-[14px] p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-sm font-bold text-slate-800">Webinar Join &amp; Sales</h3>
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-[5px]">Bar Chart</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium mb-5">How many joined Webinar and how many converted to Sales</p>
                   {(() => {
-                    const stages = [
-                      { label: "Total Leads", count: stats.total, colorStart: "#3b82f6", colorEnd: "#2563eb", gradId: "funnelBlue" },
-                      { label: "Contacted", count: stats.contactedCount, colorStart: "#f59e0b", colorEnd: "#d97706", gradId: "funnelOrange" },
-                      { label: "Webinar Joined", count: stats.qualifiedCount, colorStart: "#10b981", colorEnd: "#059669", gradId: "funnelGreen" },
-                      { label: "Sales Converted", count: stats.salesCount, colorStart: "#8b5cf6", colorEnd: "#7c3aed", gradId: "funnelPurple" }
+                    const bars = [
+                      { label: "Total Leads", val: stats.total, color: "#94a3b8", bg: "#f8fafc" },
+                      { label: "Contacted", val: stats.contactedCount, color: "#f59e0b", bg: "#fffbeb" },
+                      { label: "Webinar Join", val: stats.qualifiedCount, color: "#10b981", bg: "#f0fdf4" },
+                      { label: "Sales Convert", val: stats.salesCount, color: "#8b5cf6", bg: "#faf5ff" },
+                      { label: "Lost", val: stats.lostCount, color: "#ef4444", bg: "#fef2f2" },
                     ];
-                    
-                    const maxCount = stats.total || 1;
-                    const W = 320, H = 140;
-                    const segmentH = 26;
-                    const gap = 8;
+                    const maxV = Math.max(...bars.map(b => b.val), 1);
                     const convRate = stats.qualifiedCount > 0 ? Math.round((stats.salesCount / stats.qualifiedCount) * 100) : 0;
-                    
                     return (
-                      <div className="flex flex-col gap-4">
-                        <svg viewBox={`0 0 ${W} ${H}`} className="w-full select-none" style={{ overflow: "visible" }}>
-                          <defs>
-                            {stages.map(s => (
-                              <linearGradient key={s.gradId} id={s.gradId} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={s.colorStart} />
-                                <stop offset="100%" stopColor={s.colorEnd} />
-                              </linearGradient>
-                            ))}
-                          </defs>
-                          
-                          {stages.map((stage, i) => {
-                            const yTop = i * (segmentH + gap);
-                            const yBottom = yTop + segmentH;
-                            
-                            const wTop = (stage.count / maxCount) * 260 + 40;
-                            const wBottom = i < 3 
-                              ? (stages[i+1].count / maxCount) * 260 + 40 
-                              : (stage.count / maxCount) * 200 + 30;
-                              
-                            const x1 = W / 2 - wTop / 2;
-                            const x2 = W / 2 + wTop / 2;
-                            const x3 = W / 2 - wBottom / 2;
-                            const x4 = W / 2 + wBottom / 2;
-                            
-                            const pathD = `M ${x1},${yTop} L ${x2},${yTop} L ${x4},${yBottom} L ${x3},${yBottom} Z`;
-                            
-                            let stepPercent = 100;
-                            if (i > 0 && stages[i-1].count > 0) {
-                              stepPercent = Math.round((stage.count / stages[i-1].count) * 100);
-                            }
-                            
-                            return (
-                              <g key={stage.label}>
-                                <path
-                                  d={pathD}
-                                  fill={`url(#${stage.gradId})`}
-                                  opacity="0.9"
-                                  className="transition-all hover:opacity-100 cursor-pointer"
-                                />
-                                <text
-                                  x={W / 2}
-                                  y={yTop + 17}
-                                  textAnchor="middle"
-                                  fontSize="9"
-                                  fontWeight="extrabold"
-                                  fill="#ffffff"
-                                >
-                                  {stage.label}: {stage.count} {i > 0 ? `(${stepPercent}%)` : ""}
-                                </text>
-                              </g>
-                            );
-                          })}
-                        </svg>
-                        
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="flex flex-col items-center gap-1 p-2 bg-emerald-50 border border-emerald-100 rounded-[10px]">
-                            <span className="text-lg font-extrabold text-emerald-700">{stats.qualifiedCount}</span>
+                      <div className="flex flex-col gap-2">
+                        {bars.map(b => (
+                          <div key={b.label} className="flex items-center gap-3">
+                            <span className="text-[11px] font-bold text-slate-600 w-24 shrink-0 text-right">{b.label}</span>
+                            <div className="flex-1 h-7 rounded-[6px] overflow-hidden" style={{ backgroundColor: b.bg }}>
+                              <div
+                                className="h-full rounded-[6px] flex items-center justify-end pr-2 transition-all duration-700"
+                                style={{ width: `${Math.max((b.val / maxV) * 100, b.val > 0 ? 8 : 0)}%`, backgroundColor: b.color }}
+                              >
+                                {b.val > 0 && <span className="text-[10px] font-bold text-white">{b.val}</span>}
+                              </div>
+                            </div>
+                            {b.val === 0 && <span className="text-[10px] text-slate-300 font-bold">0</span>}
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100">
+                          <div className="flex flex-col items-center p-2.5 bg-emerald-50 border border-emerald-100 rounded-[8px]">
+                            <span className="text-base font-bold text-emerald-700">{stats.qualifiedCount}</span>
                             <span className="text-[9px] font-bold text-emerald-600 text-center">Webinar Join</span>
                           </div>
-                          <div className="flex flex-col items-center gap-1 p-2 bg-violet-50 border border-violet-100 rounded-[10px]">
-                            <span className="text-lg font-extrabold text-violet-700">{stats.salesCount}</span>
+                          <div className="flex flex-col items-center p-2.5 bg-violet-50 border border-violet-100 rounded-[8px]">
+                            <span className="text-base font-bold text-violet-700">{stats.salesCount}</span>
                             <span className="text-[9px] font-bold text-violet-600 text-center">Sales Convert</span>
                           </div>
-                          <div className="flex flex-col items-center gap-1 p-2 bg-amber-50 border border-amber-100 rounded-[10px]">
-                            <span className="text-lg font-extrabold text-amber-700">{convRate}%</span>
-                            <span className="text-[9px] font-bold text-amber-600 text-center">Join to Sales</span>
+                          <div className="flex flex-col items-center p-2.5 bg-amber-50 border border-amber-100 rounded-[8px]">
+                            <span className="text-base font-bold text-amber-700">{convRate}%</span>
+                            <span className="text-[9px] font-bold text-amber-600 text-center">Join → Sales</span>
                           </div>
                         </div>
                       </div>
