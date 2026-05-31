@@ -429,7 +429,8 @@ export default function BossReportPage() {
                 <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
                   <thead>
                     <tr className="bg-slate-50 text-slate-400 text-[10px] font-bold tracking-wider border-b border-slate-200 uppercase">
-                      <th className="py-3 px-4 w-[150px]">Guardian</th>
+                      <th className="py-3 px-2 w-[42px] text-center">#</th>
+                      <th className="py-3 px-4 w-[140px]">Guardian</th>
                       <th className="py-3 px-4 w-[160px]">Student</th>
                       <th className="py-3 px-4 w-[150px]">Phone</th>
                       <th className="py-3 px-4 w-[120px]">Area</th>
@@ -442,10 +443,11 @@ export default function BossReportPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredLeads.map(lead => {
+                    {filteredLeads.map((lead, rowIdx) => {
                       const sc = STATUS_STYLE[lead.status] || STATUS_STYLE.New;
                       return (
                         <tr key={lead._id} className="hover:bg-slate-50/60 transition-colors text-xs font-medium">
+                          <td className="py-3 px-2 text-center text-[10px] font-bold text-slate-300 select-none">{rowIdx + 1}</td>
                           <td className="py-3 px-4 font-bold text-slate-900 truncate">{lead.guardianName}</td>
                           <td className="py-3 px-4 text-slate-700">
                             <div className="font-bold truncate">{lead.studentName}</div>

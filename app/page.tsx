@@ -170,34 +170,25 @@ export default function DashboardPortal() {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
-  // ── URL-based navigation ──────────────────────────────────────────────
-  const MENU_TO_PATH: Record<string, string> = {
-    "home": "/", "add-lead": "/add-lead", "leads": "/leads",
-    "webinars": "/webinars", "register": "/register", "edit-lead": "/leads",
-  };
-  const PATH_TO_MENU: Record<string, SidebarMenu> = {
-    "/": "home", "/add-lead": "add-lead", "/leads": "leads",
-    "/webinars": "webinars", "/register": "register",
-  };
-
+  // ── URL-based navigation (query param — no remount, no reload) ───────
   const router = useRouter();
   const pathname = usePathname();
 
-  // Navigate — updates activeMenu state AND pushes URL
+  // Navigate: update URL as /?p=leads without remounting component
   const navigate = useCallback((menu: SidebarMenu) => {
     setActiveMenu(menu);
-    const path = MENU_TO_PATH[menu] || "/";
-    if (typeof window !== "undefined" && window.location.pathname !== path) {
-      router.push(path);
-    }
+    const key = menu === "edit-lead" ? "leads" : menu;
+    const url = key === "home" ? "/" : `/?p=${key}`;
+    router.replace(url, { scroll: false });
   }, [router]);
 
-  // Sync activeMenu from URL (browser back/forward, direct link)
+  // Sync activeMenu from URL on direct link / browser back-forward
   useEffect(() => {
-    if (!isLoggedIn) return;
-    const menu = PATH_TO_MENU[pathname];
-    if (menu && menu !== activeMenu) setActiveMenu(menu);
-  }, [pathname, isLoggedIn]);
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search).get("p") as SidebarMenu | null;
+    const valid: SidebarMenu[] = ["home","add-lead","leads","webinars","register"];
+    if (p && valid.includes(p) && p !== activeMenu) setActiveMenu(p);
+  }, [pathname]);
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
     try {
